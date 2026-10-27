@@ -1,6 +1,6 @@
 # German Dictionary Application
 
-A simple German-English Dictionary Application made using Python and MySQL for the CBSE Class 12 Computer Science Project.
+A simple German-English Dictionary Application originally made using Python and MySQL.
 
 This application allows users to store German and English words, search translations, and practice vocabulary using a quiz mode.
 
@@ -34,6 +34,10 @@ This application allows users to store German and English words, search translat
 german_dictionary/
 │
 ├── main.py
+├── web/
+│   ├── index.html
+│   ├── app.js
+│   └── style.css
 ├── README.md
 ```
 

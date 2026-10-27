@@ -2,8 +2,8 @@
    ⚙️  CONFIGURATION — only edit these values
    ============================================================ */
 const CFG = {
-  SUPABASE_URL: "https://bjeftnxviovtmjkukshn.supabase.co", // e.g. https://xxxx.supabase.co
-  SUPABASE_KEY: "sb_publishable_reA5_CCY_PfCmxUThMeJOg_hkLZDYKA", // your anon/public key (safe to expose)
+  SUPABASE_URL: "https://hxbbhswgoglkuvwjxcng.supabase.co", // e.g. https://xxxx.supabase.co
+  SUPABASE_KEY: "sb_publishable_Za1vsPJERCWqFuXrew6FXA_3dBSu9XV", // your anon/public key (safe to expose)
   PER_PAGE: 25,
   TABLE: "words",
   COL_EN: "english_word",
