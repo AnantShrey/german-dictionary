@@ -1,6 +1,6 @@
 # German Dictionary Application
 
-A simple German-English Dictionary Application originally made using Python and MySQL.
+A simple German-English Dictionary Application made using Python and MySQL.
 
 This application allows users to store German and English words, search translations, and practice vocabulary using a quiz mode.
 
