@@ -1,331 +1,367 @@
-# =========================================================
-# German Dictionary App
-# CBSE Class 12 Project
-# Technologies Used:
-# - Python
-# - MySQL
-#
-# Features:
-# 1. Add new words
-# 2. View all words
-# 3. Search words
-# 4. Delete words
-# 5. Quiz mode
-# 6. English ↔ German translation
-# =========================================================
+# German Dictionary Project
+# Python + MySQL connectivity
+# By Anant Shrey
 
-
-# Import MySQL connector library
-import mysql.connector
-
-# Import random module for quiz feature
+import mysql.connector as msc
 import random
 
+# Connection and cursor
+# ---------------------------------------------------------------
+con = msc.connect(host='localhost', user='root', password='root1234')
+cur = con.cursor()
 
-# =========================================================
-# DATABASE CONNECTION
-# =========================================================
+cur.execute("CREATE DATABASE IF NOT EXISTS german")
+cur.execute("USE german")
 
-# Creating connection with MySQL database
-# Change password according to your MySQL setup
+# Tables creation
+# ---------------------------------------------------------------
+def table_creation():
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS words (
+            word_id         INT AUTO_INCREMENT PRIMARY KEY,
+            german          VARCHAR(100) NOT NULL,
+            english         VARCHAR(100) NOT NULL)
+    """)
 
-conn = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="YOUR_PASSWORD",
-    database="german_dictionary"
-)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id   INT AUTO_INCREMENT PRIMARY KEY,
+            username  VARCHAR(30) NOT NULL UNIQUE,
+            password  VARCHAR(30) NOT NULL)
+    """)
 
-# Cursor object helps execute SQL queries
-cursor = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_history (
+            attempt_id  INT AUTO_INCREMENT PRIMARY KEY,
+            user_id     INT NOT NULL,
+            word_id     INT NOT NULL,
+            correct     TINYINT(1) NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            FOREIGN KEY (word_id) REFERENCES words(word_id))
+    """)
 
 
-# =========================================================
-# FUNCTION TO ADD A NEW WORD
-# =========================================================
+# Helper functions
+# ---------------------------------------------------------------
+def ask_int(prompt):
+    # keeps asking until the user enters a whole number
+    while True:
+        try:
+            return int(input(prompt))
+        except ValueError:
+            print("Please enter a number.")
+
+def show_rows(rows):
+    # prints rows of the words table
+    print("\nid | german | english")
+    print("-" * 21)
+    for row in rows:
+        values = []
+        for v in row:
+            values.append(str(v))
+        print(" | ".join(values))
+    print(f"\n{str(len(rows))} word(s) found")
+
+
+# Register and login
+# ---------------------------------------------------------------
+def register():
+    print("\nRegister")
+    username = input("Choose a username: ").strip()
+    password = input("Choose a password: ").strip()
+
+    if username == "" or password == "":
+        print("\nUsername and password can't be empty")
+        return
+
+    try:
+        cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
+        con.commit()
+        print("\nRegistered successfully. You can log in now.")
+    except msc.Error:
+        print("\nCould not register (username may already exist)")
+
+def login():
+    # returns user_id if login is correct, otherwise None
+    print("\nLogin")
+    username = input("Username: ").strip()
+    password = input("Password: ").strip()
+
+    cur.execute("SELECT user_id FROM users WHERE username = %s AND password = %s", (username, password))
+    row = cur.fetchone()
+
+    if row is None:
+        print("\nWrong username or password.")
+        return None
+    print("\n\nWelcome, " + username + "!")
+    return row[0]
+
+def login_menu():
+    # keeps showing the menu until the user logs in or exits
+    while True:
+        print("\n1. Login")
+        print("2. Register")
+        print("0. Exit")
+        choice = ask_int("\nInput: ")
+
+        if choice == 1:
+            user_id = login()
+            if user_id is not None:
+                return user_id
+        elif choice == 2:
+            register()
+        elif choice == 0:
+            return None
+        else:
+            print("unexpected input")
+
+    
+# Dictionary functions
+# ---------------------------------------------------------------
+def view_words():
+    print("\n\nViewing words")
+
+    cur.execute("SELECT * FROM words")
+    rows = cur.fetchall()
+
+    if not rows:
+        print("No words found.")
+    else:
+        show_rows(rows)
 
 def add_word():
+    print("\n\nAdding words")
 
-    # Taking input from user
-    english = input("Enter English word: ")
-    german = input("Enter German word: ")
+    english = input("\nEnter English word: ").strip()
+    german = input("Enter German word: ").strip()
 
-    # SQL query to insert values into table
-    query = """
-    INSERT INTO words (english_word, german_word)
-    VALUES (%s, %s)
-    """
+    if not english or not german:
+        print("\nBoth words are required.")
+        return
 
-    # Tuple containing values
+    query = "INSERT INTO words (english, german) VALUES (%s, %s)"
     values = (english, german)
 
-    # Execute query
-    cursor.execute(query, values)
+    cur.execute(query, values)
+    con.commit()
 
-    # Save changes permanently
-    conn.commit()
+    print("\nWord added successfully!")
 
-    print("Word added successfully!")
+def search_words():
+    print("\n\nSearching words")
 
+    print("\n1. Word ID")
+    print("2. German word")
+    print("3. English word")
 
-# =========================================================
-# FUNCTION TO VIEW ALL WORDS
-# =========================================================
+    search_cols = {1: 'word_id', 2: 'german', 3: 'english'}
 
-def view_words():
+    choice = ask_int("\nSearch by: ")
+    if choice not in search_cols:
+        print("unexpected input")
+        return
 
-    # SQL query to get all records
-    query = "SELECT * FROM words"
-
-    cursor.execute(query)
-
-    # fetchall() gets all rows from table
-    result = cursor.fetchall()
-
-    print("\n----- WORD LIST -----")
-
-    # Loop through each row
-    for row in result:
-
-        # row[0] = id
-        # row[1] = english word
-        # row[2] = german word
-
-        print(
-            "ID:", row[0],
-            "| English:", row[1],
-            "| German:", row[2]
-        )
-
-
-# =========================================================
-# FUNCTION TO SEARCH WORD
-# =========================================================
-
-def search_word():
-
-    # User enters any word
-    search = input("Enter word to search: ")
-
-    # Query checks both English and German columns
-    query = """
-    SELECT * FROM words
-    WHERE english_word = %s
-    OR german_word = %s
-    """
-
-    cursor.execute(query, (search, search))
-
-    result = cursor.fetchall()
-
-    # If result list is empty
-    if len(result) == 0:
-        print("Word not found!")
-
+    if choice == 1:
+        w_id = ask_int("Search for: ")
+        sql = "SELECT * FROM words WHERE word_id = %s"
+        cur.execute(sql, (w_id,))
     else:
-        print("\nSearch Results:")
+        text = input("Search for: ").strip()
+        sql = "SELECT * FROM words WHERE " + search_cols[choice] + " LIKE %s"
+        cur.execute(sql, ("%" + text + "%",))
+    rows = cur.fetchall()
 
-        for row in result:
-            print(
-                "ID:", row[0],
-                "| English:", row[1],
-                "| German:", row[2]
-            )
+    if not rows:
+        print("No words found.")
+    else:
+        show_rows(rows)
 
+def update_words():
+    print("\n\nUpdating words")
 
-# =========================================================
-# FUNCTION TO DELETE WORD
-# =========================================================
+    word_id = ask_int("\nEnter the word id to update: ")
+    cur.execute("SELECT * FROM words WHERE word_id = %s", (word_id,))
 
-def delete_word():
-
-    # User enters ID of word
-    word_id = input("Enter ID to delete: ")
-
-    # SQL query to delete record
-    query = "DELETE FROM words WHERE id = %s"
-
-    cursor.execute(query, (word_id,))
-
-    # Save changes
-    conn.commit()
-
-    print("Word deleted successfully!")
-
-
-# =========================================================
-# FUNCTION TO UPDATE WORD
-# =========================================================
-
-def update_word():
-
-    # User enters ID
-    word_id = input("Enter ID to update: ")
-
-    # New values
-    new_english = input("Enter new English word: ")
-    new_german = input("Enter new German word: ")
-
-    # SQL query to update data
-    query = """
-    UPDATE words
-    SET english_word = %s,
-        german_word = %s
-    WHERE id = %s
-    """
-
-    values = (new_english, new_german, word_id)
-
-    cursor.execute(query, values)
-
-    conn.commit()
-
-    print("Word updated successfully!")
-
-
-# =========================================================
-# FUNCTION FOR QUIZ MODE
-# =========================================================
-
-def quiz_mode():
-
-    print("\n===== QUIZ MODE =====")
-    print("Type 'exit' anytime to stop the quiz.\n")
-
-    # Ask translation direction ONLY ONCE
-    print("1. English → German")
-    print("2. German → English")
-
-    choice = input("Enter choice: ")
-
-    # Exit option
-    if choice.lower() == "exit":
+    if cur.fetchone() is None:
+        print("No matching word found.")
         return
 
-    # Validate choice
-    if choice not in ["1", "2"]:
-        print("Invalid choice!")
+    print("Word found. Enter the new details.")
+
+    english = input("\nEnter English word: ").strip()
+    german = input("Enter German word: ").strip()
+
+    sql = "UPDATE words SET german = %s, english = %s WHERE word_id = %s"
+
+    try:
+        cur.execute(sql, (german,english,word_id))
+        con.commit()
+        print("\nWord updated.")
+    except msc.Error:
+        print("\nCould not update word")
+
+def delete_words():
+    print("\n\nDeleting words")
+
+    word_id = ask_int("Enter the word id to delete: ")
+    cur.execute("SELECT * FROM words WHERE word_id = %s", (word_id,))
+
+    if cur.fetchone() is None:
+        print("No matching word found.")
         return
 
-    # Infinite loop for continuous quiz
+    sure = input("\nAre you sure? (y/n): ").strip().lower()
+    if sure != 'y':
+        print("Cancelled.")
+        return
+
+    try:
+        cur.execute("DELETE FROM words WHERE word_id = %s", (word_id,))
+        con.commit()
+        print("\nWord deleted.")
+    except msc.Error:
+        print("\nCould not delete word")
+
+
+# Quiz functions
+# ---------------------------------------------------------------
+def quiz(user_id):
+    print("\n\nQuiz mode")
+
+    cur.execute("SELECT word_id, german, english FROM words")
+    rows = cur.fetchall()
+
+    if not rows:
+        print("No words found.")
+        return
+    
+    print("\n1. English to German")
+    print("2. German to English")
+
+    mode = ask_int("\nChoose mode: ")
+    if mode != 1 and mode != 2:
+        print("unexpected input")
+        return
+
+    print("\nType '/exit' to stop the quiz.\n")
+
+    score = 0
+    total = 0
+
+    random.shuffle(rows)
+
+    for i in range(len(rows)+1):
+        if i == len(rows):
+            print("No words left.")   
+            break     
+
+        if mode == 1:
+            question = rows[i][2]       # english
+            answer = rows[i][1]         # german
+        else:
+            question = rows[i][1]
+            answer = rows[i][2]
+
+        user_answer = input(f"Translate {question}: ").strip()
+        if user_answer.lower() == '/exit':
+            break
+
+        total += 1
+        if user_answer.lower() == answer.lower():
+            print("Correct!\n")
+            score += 1
+            correct = 1
+        else:
+            print(f"Wrong. The answer is: {answer}\n")
+            correct = 0
+
+        cur.execute("INSERT INTO quiz_history (user_id, word_id, correct) VALUES (%s, %s, %s)", (user_id, rows[i][0], correct))
+        con.commit()
+
+    print("\nYour score: " + str(score) + " / " + str(total))
+
+def my_stats(user_id):
+    print("\n\nMy quiz stats")
+
+    cur.execute("SELECT COUNT(*), SUM(correct) FROM quiz_history WHERE user_id = %s", (user_id,))
+    row = cur.fetchone()
+
+    total = int(row[0])
+
+    if total == 0:
+        print("\nYou have not taken any quiz yet.")
+        return
+    
+    correct = int(row[1])
+
+    print("\nQuestions attempted: " + str(total))
+    print("Correct answers: " + str(correct))
+    print(f"Accuracy: {(correct * 100 / total):.2f}%")
+
+    # top 5 most-missed words (JOIN of two tables)
+    cur.execute("""
+        SELECT w.german, w.english, COUNT(*)
+        FROM quiz_history q JOIN words w ON q.word_id = w.word_id
+        WHERE q.user_id = %s AND q.correct = 0
+        GROUP BY w.word_id, w.german, w.english
+        ORDER BY COUNT(*) DESC
+        LIMIT 5
+    """, (user_id,))
+    rows = cur.fetchall()
+
+    if rows:
+        print("\nYour weak words:")
+        for r in rows:
+            print(f"{r[0]} = {r[1]} (wrong {r[2]} times)")
+
+
+# Main function
+# ---------------------------------------------------------------
+def main():
+    table_creation()
+
+    print("\nWelcome to 'german_dictionary'")
+    print("By Anant Shrey")
+
+    user_id = login_menu()
+    if user_id is None:
+        con.close()
+        print("\nGoodbye!")
+        return
+    
     while True:
+        print("\n1. View Words")
+        print("2. Add Word")
+        print("3. Search Word")
+        print("4. Update Word")
+        print("5. Delete Word")
+        print("6. Quiz")
+        print("7. My stats")
+        print("0. Exit")
 
-        # Get all words from database
-        query = "SELECT english_word, german_word FROM words"
+        choice = ask_int("\nInput: ")
+        
+        if choice == 1:
+            view_words()
+        elif choice == 2:
+            add_word()
+        elif choice == 3:
+            search_words()
+        elif choice == 4:
+            update_words()
+        elif choice == 5:
+            delete_words()
+        elif choice == 6:
+            quiz(user_id)
+        elif choice == 7:
+            my_stats(user_id)
+        elif choice == 0:
+            break
+        else:
+            print("unexpected input")
 
-        cursor.execute(query)
+    con.close()
+    print("\nGoodbye!")
 
-        words = cursor.fetchall()
-
-        # Check if database is empty
-        if len(words) == 0:
-            print("No words available for quiz!")
-            return
-
-        # Random word selection
-        random_word = random.choice(words)
-
-        english = random_word[0]
-        german = random_word[1]
-
-        # =====================================================
-        # English → German
-        # =====================================================
-
-        if choice == "1":
-
-            print("\nTranslate to German:")
-            print(english)
-
-            answer = input("Your answer: ")
-
-            # Exit quiz
-            if answer.lower() == "exit":
-                print("Exiting Quiz Mode...")
-                break
-
-            if answer.lower() == german.lower():
-                print("Correct Answer!")
-
-            else:
-                print("Wrong Answer!")
-                print("Correct answer is:", german)
-
-        # =====================================================
-        # German → English
-        # =====================================================
-
-        elif choice == "2":
-
-            print("\nTranslate to English:")
-            print(german)
-
-            answer = input("Your answer: ")
-
-            # Exit quiz
-            if answer.lower() == "exit":
-                print("Exiting Quiz Mode...")
-                break
-
-            if answer.lower() == english.lower():
-                print("Correct Answer!")
-
-            else:
-                print("Wrong Answer!")
-                print("Correct answer is:", english)
-
-
-# =========================================================
-# MAIN MENU
-# =========================================================
-
-while True:
-
-    print("\n================================")
-    print(" GERMAN DICTIONARY APPLICATION ")
-    print("================================")
-
-    print("1. Add Word")
-    print("2. View Words")
-    print("3. Search Word")
-    print("4. Delete Word")
-    print("5. Update Word")
-    print("6. Quiz Mode")
-    print("7. Exit")
-
-    # User menu choice
-    choice = input("Enter your choice: ")
-
-    # =====================================================
-    # Calling functions according to choice
-    # =====================================================
-
-    if choice == "1":
-        add_word()
-
-    elif choice == "2":
-        view_words()
-
-    elif choice == "3":
-        search_word()
-
-    elif choice == "4":
-        delete_word()
-
-    elif choice == "5":
-        update_word()
-
-    elif choice == "6":
-        quiz_mode()
-
-    elif choice == "7":
-
-        print("Thank you for using the application!")
-
-        # Close database connection before exiting
-        conn.close()
-
-        break
-
-    else:
-        print("Invalid choice! Please try again.")
+if __name__ == "__main__":
+    main()
