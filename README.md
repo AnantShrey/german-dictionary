@@ -1,30 +1,49 @@
 # German Dictionary Application
 
-A simple German-English Dictionary Application made using Python and MySQL.
+A comprehensive German–English Dictionary and Vocabulary Learning Application available as a Python CLI and a modern static Web Application served via GitHub Pages (`docs/`) with a Supabase (PostgreSQL) backend.
 
-This application allows users to store German and English words, search translations, and practice vocabulary using a quiz mode.
+This application allows users to store German and English words, search translations, practice vocabulary with flashcards in quiz mode, and track detailed learning analytics over time.
 
 ---
 
 # Features
 
-- Add new German-English words
-- View all saved words
-- Search translations
-- Update existing words
-- Delete words
-- Quiz Mode
+### Dictionary & Vocabulary Management
+- Add new German–English translation pairs (Admin only)
+- View and search words with live debounced search and highlight matching
+- Alphabetical sorting by German or English words
+- Edit and delete existing words (Admin only)
+- Paginated table browsing (handles large vocabulary collections smoothly)
+
+### Quiz Mode (Flashcards)
+- Two practice directions:
   - English → German
-  - German → English
-- Continuous quiz system until user exits
+  - German → Deutsch
+- Interactive 3D flip card practice
+- Self-grading system with real-time score pills and accuracy progress bar
+- Guest mode support: practice immediately without signing in
+- Persistent attempt history: quiz answers saved automatically per user when signed in
+
+### My Stats Panel (Learning Analytics)
+- Personal statistics tracked across all quiz sessions:
+  - **Questions Attempted**: Total number of questions answered
+  - **Correct Answers**: Number of correct responses
+  - **Accuracy Rate**: Percentage calculated to two decimal places
+- **Top 5 Weak Words**: Ranks the 5 words you miss most often in quiz practice, sorted by mistake frequency (descending) and English word (A–Z)
+- Friendly empty states for new learners and clean mistake-free practice
+
+### Role-Based Access Control (RLS & Supabase Auth)
+- **Admins**: Privileged accounts with full permissions to add, edit, and delete words.
+- **Students**: Registered accounts with email, password, and custom username. Can track quiz history and view personalized statistics.
+- **Guests**: Instant access to dictionary browsing, searching, and quiz mode without sign-in.
 
 ---
 
 # Technologies Used
 
-- Python
-- MySQL
-- mysql-connector-python
+- **Web Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3 (Design tokens & flex/grid layout), `@supabase/supabase-js` UMD via jsDelivr CDN
+- **Web Backend & Database**: Supabase (PostgreSQL, Supabase Auth, Row Level Security)
+- **CLI Application**: Python 3, MySQL, `mysql-connector-python`
 
 ---
 
@@ -33,139 +52,102 @@ This application allows users to store German and English words, search translat
 ```text
 german_dictionary/
 │
-├── main.py
-├── web/
-│   ├── index.html
-│   ├── app.js
-│   └── style.css
-├── README.md
+├── docs/                                  # Static Web App (served by GitHub Pages)
+│   ├── index.html                         # Markup and modal structures
+│   ├── app.js                             # Frontend logic, state, and Supabase client
+│   └── style.css                          # Design tokens, typography, and responsive styles
+│
+├── supabase/
+│   └── migrations/
+│       └── 20261027210700_quiz_and_roles.sql # Postgres migration with RLS & functions
+│
+├── main.py                                # Python CLI + MySQL application
+└── README.md
 ```
 
 ---
 
-# Database Setup
+# Web App Setup & Database Migration (Supabase)
+
+### Step 1: Run the Database Migration
+1. Log into your [Supabase Dashboard](https://supabase.com/dashboard) and open your project.
+2. Navigate to the **SQL Editor** in the left sidebar.
+3. Open `supabase/migrations/20261027210700_quiz_and_roles.sql` from this repository, copy its contents, paste them into the SQL Editor, and click **Run**.
+4. This migration will:
+   - Create tables: `admins`, `users`, and `quiz_history` (with `word_id` matching `words.id` `bigint`).
+   - Create helper function `public.is_admin()`.
+   - Configure Row Level Security (RLS) policies on all tables so non-admins cannot mutate `words`, guests cannot write to tables, and students can only access their own profile and quiz history.
+
+### Step 2: Create and Designate Your Admin User
+1. Open the web app and click **Add Word** > **Sign In** > **Create Account** to register your account (or invite a user via Supabase Auth).
+2. In Supabase Dashboard, navigate to **Authentication > Users** and copy your User UUID.
+3. Open the **SQL Editor** and run the following command to grant admin privileges:
+
+```sql
+INSERT INTO admins (user_id) VALUES ('<your-auth-user-id>');
+```
+
+### Step 3: Verify Frontend Configuration
+In `docs/app.js`, verify that the `CFG` block contains your Supabase project URL and anon public publishable key:
+
+```javascript
+const CFG = {
+  SUPABASE_URL: "https://your-project-id.supabase.co",
+  SUPABASE_KEY: "your-anon-publishable-key",
+  PER_PAGE: 25,
+  TABLE: "words",
+  COL_EN: "english_word",
+  COL_DE: "german_word",
+};
+```
+
+---
+
+# Python CLI Database Setup (MySQL)
+
+For running the local Python CLI version (`main.py`):
 
 ## Step 1: Create Database
-
 ```sql
-CREATE DATABASE german_dictionary;
+CREATE DATABASE german;
 ```
-
----
 
 ## Step 2: Use Database
-
 ```sql
-USE german_dictionary;
+USE german;
 ```
 
----
-
-## Step 3: Create Table
-
-```sql
-CREATE TABLE words (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    english_word VARCHAR(100),
-    german_word VARCHAR(100)
-);
-```
-
----
-
-# Install Required Module
-
-Open terminal and run:
-
+## Step 3: Install Required Python Module
 ```bash
 pip install mysql-connector-python
 ```
 
----
-
-# Configure MySQL Password
-
-Inside `main.py`, change:
-
+## Step 4: Configure Credentials
+Inside `main.py`, update the MySQL connection password:
 ```python
-password="YOUR_PASSWORD"
+con = msc.connect(host='localhost', user='root', password='YOUR_PASSWORD')
 ```
 
-to your actual MySQL password.
-
-Example:
-
-```python
-password="root123"
-```
-
----
-
-# How to Run
-
-Run the program using:
-
+## Step 5: Run the Application
 ```bash
 python main.py
 ```
 
----
-
-# Application Menu
-
+### Python CLI Menu
 ```text
-1. Add Word
-2. View Words
+1. View Words
+2. Add Word
 3. Search Word
-4. Delete Word
-5. Update Word
-6. Quiz Mode
-7. Exit
+4. Update Word
+5. Delete Word
+6. Quiz
+7. My stats
+0. Exit
 ```
-
----
-
-# Quiz Mode
-
-The quiz mode continuously asks random translation questions until the user types:
-
-```text
-exit
-```
-
-Supports:
-- English → German
-- German → English
-
----
-
-# Concepts Used
-
-- Python Functions
-- Loops
-- Conditional Statements
-- MySQL Database Connectivity
-- SQL Queries
-- CRUD Operations
-- Random Module
-
----
-
-# Future Improvements
-
-Possible future upgrades:
-
-- GUI using Tkinter
-- Dark Mode
-- Word Categories
-- Score Tracking
-- CSV Import/Export
-- Audio Pronunciation
 
 ---
 
 # Author
 
-Anant Shrey
-
+Anant Shrey  
 CBSE Class 12 Computer Science Project

@@ -52,6 +52,13 @@
                 </svg>
                 Quiz Mode
             </div>
+            <div class="nav-item" data-panel="stats">
+                <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                        d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                </svg>
+                My Stats
+            </div>
             <div class="nav-section">Admin</div>
             <div class="nav-item" data-panel="admin">
                 <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -156,7 +163,15 @@
                     <button class="q-btn q-wrong" onclick="grade(false)">✗ Wrong</button>
                     <button class="q-btn q-correct" onclick="grade(true)">✓ Correct</button>
                 </div>
+                <div class="quiz-guest-hint" id="quizGuestHint" style="display:none;">
+                    Sign in to save your progress.
+                </div>
             </div>
+        </div>
+
+        <!-- STATS PANEL -->
+        <div class="panel" id="panel-stats">
+            <div id="statsContent"></div>
         </div>
 
         <!-- ADMIN PANEL -->
@@ -165,14 +180,23 @@
         </div>
     </main>
 
-    <!-- LOGIN MODAL -->
+    <!-- AUTH MODAL (Login & Signup) -->
     <div class="backdrop" id="loginModal">
         <div class="modal">
-            <div class="modal-title">Admin Sign In</div>
-            <div class="modal-sub">Sign in with your Supabase admin account to manage words.</div>
+            <div class="auth-toggle">
+                <button type="button" class="auth-toggle-btn on" id="authTabLogin" onclick="setAuthMode('login')">Sign In</button>
+                <button type="button" class="auth-toggle-btn" id="authTabSignup" onclick="setAuthMode('signup')">Create Account</button>
+            </div>
+            <div class="modal-title" id="authModalTitle">Sign In</div>
+            <div class="modal-sub" id="authModalSub">Sign in to save your quiz progress or manage words.</div>
+            <div class="form-group" id="signupUsernameGroup" style="display: none;">
+                <label class="form-lbl">Username</label>
+                <input class="form-input" type="text" id="signupUsername" placeholder="e.g. johndoe (3–30 characters)"
+                    autocomplete="username" maxlength="30">
+            </div>
             <div class="form-group">
                 <label class="form-lbl">Email</label>
-                <input class="form-input" type="email" id="loginEmail" placeholder="admin@example.com"
+                <input class="form-input" type="email" id="loginEmail" placeholder="you@example.com"
                     autocomplete="email">
             </div>
             <div class="form-group">
@@ -183,7 +207,7 @@
             </div>
             <div class="modal-acts">
                 <button class="m-btn m-cancel" onclick="closeLoginModal()">Cancel</button>
-                <button class="m-btn m-confirm" id="loginBtn" onclick="submitLogin()">Sign In</button>
+                <button class="m-btn m-confirm" id="loginBtn" onclick="submitAuth()">Sign In</button>
             </div>
         </div>
     </div>
